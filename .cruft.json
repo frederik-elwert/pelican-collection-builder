@@ -1,0 +1,27 @@
+{
+  "template": "https://github.com/getpelican/cookiecutter-pelican-plugin",
+  "commit": "94970ab900aed538f451686a2eb51188dbfd1a28",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "plugin_name": "Collection Builder",
+      "repo_name": "pelican-collection-builder",
+      "package_name": "collection_builder",
+      "distribution_name": "pelican-collection-builder",
+      "version": "0.0.0",
+      "description": "Pelican plugin to generate collection pages from a CSV file",
+      "authors": "{name = \"Frederik Elwert\", email=\"frederik.elwert@rub.de\"})\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D\u001b[D",
+      "keywords": "\"pelican\", \"plugin\"",
+      "readme": "README.md",
+      "contributing": "CONTRIBUTING.md",
+      "license": "GNU Affero General Public License v3|AGPL-3.0",
+      "repo_url": "https://github.com/pelican-plugins/pelican-collection-builder",
+      "dev_status": "1 - Planning",
+      "tests_exist": false,
+      "python_version": ">=3.8.1,<4.0",
+      "pelican_version": ">=4.5",
+      "_template": "https://github.com/getpelican/cookiecutter-pelican-plugin"
+    }
+  },
+  "directory": null
+}
