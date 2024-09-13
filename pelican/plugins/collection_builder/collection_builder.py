@@ -11,24 +11,20 @@ def add_csv_items(generator):
     content_path = Path(generator.settings["PATH"])
     csv_file_path = content_path / "data" / "collection.csv"
 
+    base_reader = BaseReader(generator.settings)
     with csv_file_path.open(newline="") as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            add_content_item(generator, row)
-
-
-def add_content_item(generator, row):
-    base_reader = BaseReader(generator.settings)
-    metadata = {
-        "title": row["label"],
-        "date": datetime.datetime.now(),
-        "template": "collection_item",
-        "category": base_reader.process_metadata("category", "Collection"),
-        **row,
-    }
-    content = ""
-    article = Article(content, metadata, settings=generator.settings)
-    generator.articles.append(article)
+            metadata = {
+                "title": row["label"],
+                "date": datetime.datetime.now(),
+                "template": "collection_item",
+                "category": base_reader.process_metadata("category", "Collection"),
+                **row,
+            }
+            content = ""
+            article = Article(content, metadata, settings=generator.settings)
+            generator.articles.append(article)
 
 
 def register():
