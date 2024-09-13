@@ -22,7 +22,7 @@ def add_content_item(generator, row):
     metadata = {
         "title": row["label"],
         "date": datetime.datetime.now(),
-        # "template": "collection_item",
+        "template": "collection_item",
         "category": base_reader.process_metadata("category", "Collection"),
         **row,
     }
