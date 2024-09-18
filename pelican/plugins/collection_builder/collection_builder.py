@@ -7,6 +7,10 @@ from pelican import signals
 from pelican.contents import Article
 from pelican.readers import BaseReader
 
+DEFAULT_COLLECTION_DATA_FILE = "collection.csv"
+DEFAULT_COLLECTION_CATEGORY = "Collection"
+COLLECTION_TEMPLATE = "collection_item"
+
 
 def _is_image(path):
     mtype, enc = mimetypes.guess_type(path)
@@ -30,27 +34,29 @@ def add_image(row, settings):
     item_path = raw_images_path / pid
     if item_path.is_dir():
         images = [f for f in item_path.iterdir() if _is_image(f)]
-        return {
-            "images": [
-                f"{image.relative_to(content_path)}" for image in images
-            ]
-        }
+        return {"images": [f"{image.relative_to(content_path)}" for image in images]}
 
 
 def add_csv_items(generator):
     content_path = Path(generator.settings["PATH"])
-    csv_file_path = content_path / "data" / "collection.csv"
+    data_file = generator.settings.get(
+        "COLLECTION_DATA_FILE", DEFAULT_COLLECTION_DATA_FILE
+    )
+    csv_file_path = content_path / "data" / data_file
 
     base_reader = BaseReader(generator.settings)
     with csv_file_path.open(newline="") as csvfile:
         reader = csv.DictReader(csvfile)
+        category = generator.settings.get(
+            "COLLECTION_CATEGORY", DEFAULT_COLLECTION_CATEGORY
+        )
         for row in reader:
             # Map basic metadata
             metadata = {
                 "title": row["label"],
                 "date": datetime.datetime.now(),
-                "template": "collection_item",
-                "category": base_reader.process_metadata("category", "Collection"),
+                "template": COLLECTION_TEMPLATE,
+                "category": base_reader.process_metadata("category", category),
                 **row,
             }
             # Add image paths
