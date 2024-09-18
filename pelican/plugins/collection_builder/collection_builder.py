@@ -25,14 +25,14 @@ def add_image(row, settings):
     matches = list(raw_images_path.glob(f"{pid}.*"))
     if len(matches) == 1 and _is_image(matches[0]):
         image = matches[0]
-        return {"image": f"/{image.relative_to(content_path)}"}
+        return {"image": f"{image.relative_to(content_path)}"}
     # Test folder of images
     item_path = raw_images_path / pid
     if item_path.is_dir():
         images = [f for f in item_path.iterdir() if _is_image(f)]
         return {
             "images": [
-                f"/{image.relative_to(content_path)}" for image in images
+                f"{image.relative_to(content_path)}" for image in images
             ]
         }
 
