@@ -6,6 +6,7 @@ from pathlib import Path
 from pelican import signals
 from pelican.contents import Article
 from pelican.readers import BaseReader
+from pelican.urlwrappers import URLWrapper
 
 DEFAULT_COLLECTION_DATA_FILE = "collection.csv"
 DEFAULT_COLLECTION_CATEGORY = "Collection"
@@ -37,36 +38,74 @@ def add_image(row, settings):
         return {"images": [f"{image.relative_to(content_path)}" for image in images]}
 
 
-def add_csv_items(generator):
-    content_path = Path(generator.settings["PATH"])
-    data_file = generator.settings.get(
-        "COLLECTION_DATA_FILE", DEFAULT_COLLECTION_DATA_FILE
-    )
+def read_collection_data(settings):
+    """Read the CSV file and return a dictionary of collection items."""
+    content_path = Path(settings["PATH"])
+    data_file = settings.get("COLLECTION_DATA_FILE", DEFAULT_COLLECTION_DATA_FILE)
     csv_file_path = content_path / "data" / data_file
 
-    base_reader = BaseReader(generator.settings)
+    collection_data = {}
     with csv_file_path.open(newline="") as csvfile:
         reader = csv.DictReader(csvfile)
-        category = generator.settings.get(
-            "COLLECTION_CATEGORY", DEFAULT_COLLECTION_CATEGORY
-        )
         for row in reader:
-            # Map basic metadata
-            metadata = {
-                "title": row["label"],
-                "date": datetime.datetime.now(),
-                "template": COLLECTION_TEMPLATE,
-                "category": base_reader.process_metadata("category", category),
-                **row,
-            }
-            # Add image paths
-            metadata.update(add_image(row, generator.settings))
-            # Add content
-            content = ""
-            # Generate and insert article
-            article = Article(content, metadata, settings=generator.settings)
-            generator.articles.append(article)
+            # Add title based on label
+            # `label` is used in the CSV file, a convention taken from wax.
+            # `title` is pelican’s convention.
+            row["title"] = row["label"]
+            # Add image paths to the row data
+            row.update(add_image(row, settings))
+            # Add url to the row data so it is available in collection_data
+            # Required so that jinja2content knows about item URLs
+            class Article(URLWrapper):
+                pass
+            urlwrapper = Article(row["label"], settings)
+            row["url"] = urlwrapper.url
+            # Store in dictionary using pid as key
+            collection_data[row["pid"]] = row
+
+    return collection_data
+
+
+def initialize_collection(pelican_obj):
+    """Initialize the collection by reading CSV data and adding it to JINJA_GLOBALS."""
+    collection_data = read_collection_data(pelican_obj.settings)
+
+    # Initialize JINJA_GLOBALS if it doesn't exist
+    if "JINJA_GLOBALS" not in pelican_obj.settings:
+        pelican_obj.settings["JINJA_GLOBALS"] = {}
+
+    # Add collection data to JINJA_GLOBALS
+    pelican_obj.settings["JINJA_GLOBALS"]["collection_data"] = collection_data
+    pelican_obj.settings["JINJA_GLOBALS"]["SITEURL"] = pelican_obj.settings.get(
+        "SITEURL", ""
+    )
+
+
+def generate_collection_pages(generator):
+    """Generate individual pages for collection items using the shared collection
+    data."""
+    collection_data = generator.settings["JINJA_GLOBALS"]["collection_data"]
+    base_reader = BaseReader(generator.settings)
+    category = generator.settings.get(
+        "COLLECTION_CATEGORY", DEFAULT_COLLECTION_CATEGORY
+    )
+
+    for pid, item_data in collection_data.items():
+        # Map basic metadata
+        metadata = {
+            "date": datetime.datetime.now(),
+            "template": COLLECTION_TEMPLATE,
+            "category": base_reader.process_metadata("category", category),
+            **item_data,
+        }
+
+        # Generate and insert article
+        content = ""
+        article = Article(content, metadata, settings=generator.settings)
+        generator.articles.append(article)
 
 
 def register():
-    signals.article_generator_pretaxonomy.connect(add_csv_items)
+    """Register the plugin signals."""
+    signals.initialized.connect(initialize_collection)
+    signals.article_generator_pretaxonomy.connect(generate_collection_pages)
