@@ -8,9 +8,14 @@ from pelican.contents import Article
 from pelican.readers import BaseReader
 from pelican.urlwrappers import URLWrapper
 
+from .iiif_static_generator import IIIFGenerator
+
 DEFAULT_COLLECTION_DATA_FILE = "collection.csv"
 DEFAULT_COLLECTION_CATEGORY = "Collection"
+DEFAULT_COLLECTION_TILE_SIZE = 256
 COLLECTION_TEMPLATE = "collection_item"
+DEFAULT_IMAGE_PROCESS_DIR = "derivatives"
+PREVIEW_SITE_URL = "http://localhost:8000"
 
 
 def _is_image(path):
@@ -23,19 +28,65 @@ def _is_image(path):
 
 
 def add_image(row, settings):
+    """Add image information to row data, with optional IIIF support."""
     content_path = Path(settings["PATH"])
     raw_images_path = content_path / "images"
+    output_path = Path(settings["OUTPUT_PATH"])
+    process_dir = settings.get("IMAGE_PROCESS_DIR", DEFAULT_IMAGE_PROCESS_DIR)
+    output_path = output_path / "images" / process_dir / "iiif"
+    site_url = settings.get("SITEURL", "") or PREVIEW_SITE_URL
+    base_url = f"{site_url}/images/{process_dir}/iiif"
     pid = row["pid"]
-    # Test single image
+    use_iiif = settings.get("COLLECTION_USE_IIIF", False)
+
+    image_data = {}
+
+    # Collect images
     matches = list(raw_images_path.glob(f"{pid}.*"))
     if len(matches) == 1 and _is_image(matches[0]):
         image = matches[0]
-        return {"image": f"{image.relative_to(content_path)}"}
-    # Test folder of images
+        image_data.update({"image": f"{image.relative_to(content_path)}"})
+
     item_path = raw_images_path / pid
     if item_path.is_dir():
         images = [f for f in item_path.iterdir() if _is_image(f)]
-        return {"images": [f"{image.relative_to(content_path)}" for image in images]}
+        image_data.update(
+            {"images": [f"{image.relative_to(content_path)}" for image in images]}
+        )
+    if use_iiif:
+        # IIIF behavior
+        iiif_generator = IIIFGenerator(
+            output_path=output_path,
+            base_url=base_url,
+            tile_size=settings.get(
+                "COLLECTION_TILE_SIZE", DEFAULT_COLLECTION_TILE_SIZE
+            ),
+        )
+
+        if "image" in image_data:
+            # Single image
+            images = [image_data["image"]]
+        if "images" in image_data:
+            # Multiple images
+            images = image_data["images"]
+
+        for image in images:
+            identifier = f"{pid}-{Path(image).stem}"
+
+            # Generate tiles
+            image_path = content_path / image
+            iiif_generator.generate_tiles(image_path, identifier)
+
+        # Generate manifest
+        lang = settings.get("DEFAULT_LANG", "en")
+        manifest_url = iiif_generator.generate_manifest(
+            identifier=pid,
+            label={lang: [row["label"]]},
+        )
+
+        image_data["manifest"] = manifest_url
+
+    return image_data
 
 
 def read_collection_data(settings):
@@ -54,10 +105,12 @@ def read_collection_data(settings):
             row["title"] = row["label"]
             # Add image paths to the row data
             row.update(add_image(row, settings))
+
             # Add url to the row data so it is available in collection_data
             # Required so that jinja2content knows about item URLs
             class Article(URLWrapper):
                 pass
+
             urlwrapper = Article(row["label"], settings)
             row["url"] = urlwrapper.url
             # Store in dictionary using pid as key

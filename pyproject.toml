@@ -35,6 +35,10 @@ Funding = "https://donate.getpelican.com/"
 
 [project.optional-dependencies]
 markdown = ["markdown>=3.4"]
+iiif = [
+    "iiif-prezi3>=2.0.0",
+    "pyvips>=2.2.3",
+]
 
 [tool.pdm]
 
