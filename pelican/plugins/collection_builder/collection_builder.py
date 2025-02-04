@@ -160,7 +160,8 @@ def generate_collection_pages(generator):
         }
 
         # Generate and insert article
-        content = ""
+        content = generator.settings.get("COLLECTION_ITEM_CONTENT", "")
+        content = content.format_map(metadata)
         article = Article(content, metadata, settings=generator.settings)
         generator.articles.append(article)
 
