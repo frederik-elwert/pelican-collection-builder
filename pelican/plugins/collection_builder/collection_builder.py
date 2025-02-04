@@ -72,7 +72,13 @@ def add_image(row, settings):
             images = image_data["images"]
 
         for image in images:
-            identifier = f"{pid}-{Path(image).stem}"
+            image_id = Path(image).stem
+            if image_id == pid:
+                # This is the case for single images, use pid as identifier
+                identifier = pid
+            else:
+                # For multiple images, create per-image identifiers
+                identifier = f"{pid}-{image_id}"
 
             # Generate tiles
             image_path = content_path / image
