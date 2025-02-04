@@ -1,5 +1,4 @@
 from pathlib import Path
-import shutil
 from typing import Dict, List
 
 from iiif_prezi3 import Manifest
@@ -7,6 +6,9 @@ import pyvips
 
 # Import the helper to ensure the monkeypatch is applied
 from . import create_canvas_from_local_iiif  # noqa: F401
+
+
+THUMBNAIL_SIZE = 96
 
 
 class IIIFGenerator:
@@ -67,12 +69,16 @@ class IIIFGenerator:
                 id=f"{self.base_url}/images",
             )
             # vips only creates tiles, but not the full image.
-            # Copy the original file to the correct location
-            # TODO: Handle formats other than JPG
-            full_path = output_dir / "full" / "max" / "0" / "default.jpg"
-            full_path.parent.mkdir(parents=True, exist_ok=True)
-            if image_path.suffix.lower() in (".jpg", ".jpeg"):
-                shutil.copy(image_path, full_path)
+            # Save the original size and thumbnail to the correct location
+            # Original size
+            max_path = output_dir / "full" / "max" / "0" / "default.jpg"
+            max_path.parent.mkdir(parents=True, exist_ok=True)
+            image.write_to_file(max_path)
+            # Thumbnail
+            thumb_path = output_dir / "full" / f"{THUMBNAIL_SIZE}," / "0" / "default.jpg"
+            thumb_path.parent.mkdir(parents=True, exist_ok=True)
+            thumb = pyvips.Image.thumbnail(str(image_path), THUMBNAIL_SIZE)
+            thumb.write_to_file(thumb_path)
 
         return {
             "width": image.width,
