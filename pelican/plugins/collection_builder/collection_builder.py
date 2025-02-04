@@ -50,6 +50,7 @@ def add_image(row, settings):
     item_path = raw_images_path / pid
     if item_path.is_dir():
         images = [f for f in item_path.iterdir() if _is_image(f)]
+        images.sort()
         image_data.update(
             {"images": [f"{image.relative_to(content_path)}" for image in images]}
         )
